@@ -7,7 +7,7 @@ from math import sin, cos, sqrt, log, pow, exp, fabs, asin, acos, pi
 from random import randint, random
 from copy import copy
 
-from dual_numbers import sind, cosd, expd, logd, sqrtd, powd, asind, acosd, DualNumber
+#from dual_numbers import sind, cosd, expd, logd, sqrtd, powd, asind, acosd, DualNumber
 
 class Operation():
 	"""

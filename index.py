@@ -1,8 +1,10 @@
 from random import gauss
+from copy import copy
 from time import time
-from math import sqrt, fabs
+from math import sqrt, fabs, inf
 from newton_raphson import newton_raphson
-from cgp import cgp
+from cgp import CGP
+from optimization import multistart_opt
 from pso import pso
 
 def calc_computational_baseline_operations(n, f, is_binary):
@@ -22,6 +24,7 @@ def calc_computational_baseline_operations(n, f, is_binary):
 
 	return t/float(n)
 
+
 def objective_func_cont(x, data):
 	"""
 	The error function of the continous optimization.
@@ -40,6 +43,34 @@ def objective_func_cont(x, data):
 	par_samples = data[4]
 	roots = data[5]
 
+	# TODO: Check if the following 2 lines are slow,. They don't need to be recalculated everytime.
+	is_par_used = cgp.which_parameters_are_used()
+	nr_of_pars_used = sum(is_par_used)
+
+	# One could imagine a function f, with one variable x, and two parameters a & b,
+	# where the function is f(x) = b*x. Which means that the parameter a is unused. This means 
+	# that it doesn't have to be tuned, but the function still needs two parameters (at least it 
+	# thinks that it does). In these cases we just set a:=0 and tune only b.
+
+	def func(X, parameters=[], derivative=False, der_dir=0):
+		# TODO: This shouldn't have to be done every time.
+		# Insert zeroes in the non-used parameters
+		pars = [0.0 for _ in range(cgp.nr_of_parameters)]
+		#print(x, parameters, nr_of_pars_used, cgp.nr_of_parameters)
+		assert len(parameters) == nr_of_pars_used
+
+		counter = 0
+		for i in range(cgp.nr_of_parameters):
+			if is_par_used[i]:
+				pars[i] = parameters[counter]
+				counter += 1
+
+		try:
+			return cgp.eval(X, parameters=pars, derivative=derivative, der_dir=der_dir)
+		except (ValueError, ZeroDivisionError): # Sometimes x gets really big and this can cause problems.
+			print("Math domain error in start error func.")
+			return 1.0e20
+
 	n = len(roots)
 	assert len(par_samples) == n
 
@@ -49,12 +80,59 @@ def objective_func_cont(x, data):
 		root = roots[i]
 		par_sample = par_samples[i]
 
-		root_guess = cgp.eval(par_sample, x) # Yes, I know that par_sample goes to cgp.x, and x goes to cgp.parameters. The naming is terrible, but it is the way it should be.
+		root_guess = func(par_sample, x) # Yes, I know that par_sample goes to cgp.x, and x goes to cgp.parameters. The naming is terrible, but it is the way it should be.
 
 		total_error += (root_guess-root)*(root_guess-root)
 
 		# TODO: Add the error from the timeing baselines
 	return sqrt(total_error)
+
+def objective_func_disc(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, data):
+	cgp = copy(new_cgp) # TODO: Is this copy really needed?
+	# Then we find out which parameters that are used.
+	is_par_used = cgp.which_parameters_are_used()
+	nr_of_pars_used = sum(is_par_used)
+	data = [new_cgp] + data
+	
+	# We ignore the constant CGPs, because they are dumb and treated separately.
+	if cgp.is_constant:
+		return (inf, [])
+
+	if nr_of_pars_used > 0:
+		# If some parameters are used in the model, then these will have to be tuned.
+		
+
+		# Then we do a curve-fitting of the numerical constants/parameters.
+		nr_of_pnts = len(pnts)
+
+		err_func = lambda x: objective_func_cont(x, data)
+		inds = 20
+		max_iter = 50
+		(error, best_par_vals) = pso(nr_of_pars_used, inds, max_iter, err_func)
+
+		#(best_par_vals, error) = combo_curve_fitting(residual_func, f_vals, nr_of_pars_used, nr_of_pnts, pnts, jacobian_func, func)
+
+		# If some parameters are unused, then we'll just set them to 0.
+		if len(best_par_vals) != nr_of_pars:
+			assert len(best_par_vals) < nr_of_pars
+			best_par_vals_padded = [0.0 for _ in range(cgp.nr_of_parameters)]
+
+			counter = 0
+			for i in range(cgp.nr_of_parameters):
+				if is_par_used[i]:
+					best_par_vals_padded[i] = best_par_vals[counter]
+					counter += 1
+			best_par_vals = best_par_vals_padded
+	else:
+		# If no parameter is actually used, then there is no need for any curve-fitting.
+		func = cgp.eval
+
+		# Okay, so no parameters are actually used, so we'll just use some dummy values.
+		pars = [0.0 for _ in range(cgp.nr_of_parameters)]
+		error = objective_func_cont([], data)
+		best_par_vals = pars
+
+	return (error, best_par_vals)
 
 if __name__ == '__main__':
 	from random import random
@@ -141,9 +219,12 @@ if __name__ == '__main__':
 
 		conv_factors[i] = 0.5*fabs(der_approx(func_der_curry, root))
 
+	# Collect all the data objects the optimization needs.
+	optimization_data = [conv_factors, total_time, ops_running_times, parameter_samples, roots]
+
 	# Start the optimization.
 	nr_of_nodes = 7
 	from operation_table import op_table
 	nr_of_funcs = len(op_table)
 	nr_of_parameters_for_cgp = 3
-	multistart_opt(roots, parameter_samples, nr_of_parameters, nr_of_funcs, nr_of_nodes, error_func, op_table, 'sa', nr_of_pars=nr_of_parameters_for_cgp, max_time=60*10)
+	multistart_opt(roots, parameter_samples, nr_of_parameters, nr_of_funcs, nr_of_nodes, objective_func_disc, op_table, 'sa', optimization_data, nr_of_pars=nr_of_parameters_for_cgp, max_time=60*10)

@@ -34,11 +34,12 @@ def pso(dims, inds, max_iter, err_func, w=0.95, theta_p=0.1, theta_g=0.1):
             if err < best_err:
                global_best_pos = positions[ind, :]
                best_err = err
-               print(itr, err)
+               #print(itr, err)
    return (best_err, global_best_pos)
-
+"""
 def test(x):
    from math import sin, cos
    return (x[0]-2)*(x[0]-2) + sin(x[1]) + cos(x[2]*x[3])
 
 pso(4, 20, 50, test)
+"""

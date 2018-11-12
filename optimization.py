@@ -115,7 +115,7 @@ def acceptance_prob(new_error, current_error, temp):
 	diff = new_error - current_error
 	return exp(-(diff)/temp)
 
-def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_iter=500, nr_of_pars=0, reheat_iter=100, remaining_time=None):
+def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimization_data, max_iter=500, nr_of_pars=0, reheat_iter=100, remaining_time=None):
 	"""
 	Simulated anneling is a simple way of doing compinatorial optimization without getting stuck in local minima.
 	It basically works like this: 
@@ -141,7 +141,7 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_i
 
 	current_cgp = CGP(dims, op_table, current_sol, nr_of_parameters=nr_of_pars)
 
-	(current_error, best_pars) = error_func(f_vals, pnts, dims, current_cgp, nr_of_pars, op_table)
+	(current_error, best_pars) = error_func(f_vals, pnts, dims, current_cgp, nr_of_pars, op_table, optimization_data)
 
 	print(current_error)
 	#assert False
@@ -160,7 +160,7 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_i
 		# Do a small mutation to create a new function (aka solution)
 		new_cgp = mutate(current_cgp, dims+nr_of_pars, nr_of_funcs)
 		#cgp = CGP(dims, op_table, new_sol, nr_of_parameters=nr_of_pars)
-		(new_error, new_pars) = error_func(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table)
+		(new_error, new_pars) = error_func(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, optimization_data)
 
 		temperature_itr += 1
 
@@ -172,7 +172,7 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_i
 
 			if new_error < best_error:
 				print("best yet:", new_error)
-				write_2_file(new_pars, itr, current_error, 'sa',current_cgp.convert2str(parameters=new_pars))
+				#write_2_file(new_pars, itr, current_error, 'sa',current_cgp.convert2str(parameters=new_pars))
 				new_cgp.print_function(parameters=new_pars)
 				best_cgp = deepcopy(new_cgp)
 				best_error = new_error
@@ -192,7 +192,7 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_i
 	return (best_cgp, best_error, best_pars)
 
 
-def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimizer, max_iter=1000, multi_starts=10, nr_of_pars=0, max_time=None):
+def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimizer, optimization_data, max_iter=1000, multi_starts=10, nr_of_pars=0, max_time=None):
 	"""
 	A multistart version of simulated anneling/es. Returns the best found solution.
 	"""
@@ -215,7 +215,7 @@ def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_
 			passed_time = time() - start_time
 			remaining_time = max_time - passed_time
 		if optimizer=="sa":
-			(sol, err, pars) = sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_iter=max_iter, nr_of_pars=nr_of_pars, remaining_time=remaining_time)
+			(sol, err, pars) = sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimization_data, max_iter=max_iter, nr_of_pars=nr_of_pars, remaining_time=remaining_time)
 		elif optimizer=="es":
 			(sol, err, pars) = es(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_iter=max_iter, nr_of_pars=nr_of_pars, remaining_time=remaining_time)
 		else:
