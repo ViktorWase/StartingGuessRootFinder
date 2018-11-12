@@ -2,6 +2,8 @@ from random import gauss
 from time import time
 from math import sqrt, fabs
 from newton_raphson import newton_raphson
+from cgp import cgp
+from pso import pso
 
 def calc_computational_baseline_operations(n, f, is_binary):
 	numbers = [fabs(gauss(0,1))+1.0e8 for _ in range(n)]
@@ -19,6 +21,40 @@ def calc_computational_baseline_operations(n, f, is_binary):
 	t = time() - t0
 
 	return t/float(n)
+
+def objective_func_cont(x, data):
+	"""
+	The error function of the continous optimization.
+	the data object contains:
+	- a CGP-object describing the mathematical function.
+	- conv_factors
+	- NR running time
+	- ops running times
+	- parameter samples
+	- the corresponding roots.
+	"""
+	cgp = data[0]
+	conv_factors = data[1]
+	running_time_NR = data[2]
+	running_times_ops = data[3]
+	par_samples = data[4]
+	roots = data[5]
+
+	n = len(roots)
+	assert len(par_samples) == n
+
+	total_error = 0.0
+	total_time_error = 0.0
+	for i in range(n):
+		root = roots[i]
+		par_sample = par_samples[i]
+
+		root_guess = cgp.eval(par_sample, x) # Yes, I know that par_sample goes to cgp.x, and x goes to cgp.parameters. The naming is terrible, but it is the way it should be.
+
+		total_error += (root_guess-root)*(root_guess-root)
+
+		# TODO: Add the error from the timeing baselines
+	return sqrt(total_error)
 
 if __name__ == '__main__':
 	from random import random
@@ -106,3 +142,8 @@ if __name__ == '__main__':
 		conv_factors[i] = 0.5*fabs(der_approx(func_der_curry, root))
 
 	# Start the optimization.
+	nr_of_nodes = 7
+	from operation_table import op_table
+	nr_of_funcs = len(op_table)
+	nr_of_parameters_for_cgp = 3
+	multistart_opt(roots, parameter_samples, nr_of_parameters, nr_of_funcs, nr_of_nodes, error_func, op_table, 'sa', nr_of_pars=nr_of_parameters_for_cgp, max_time=60*10)

@@ -191,7 +191,6 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_i
 
 	return (best_cgp, best_error, best_pars)
 
-def differential_evolution():
 
 def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimizer, max_iter=1000, multi_starts=10, nr_of_pars=0, max_time=None):
 	"""
