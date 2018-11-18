@@ -7,6 +7,22 @@ from cgp import CGP
 from optimization import multistart_opt
 from pso import pso
 
+def calc_alpha_for_root(func, par_vals, x_root, h=1.0e-10):
+	# Calcs 2*f''(x)/f'(x)
+	f_left = func([x_root - h], par_vals)
+	f_mid = func([x_root], par_vals)
+	f_right = func([x_root + h], par_vals)
+
+	f_der = (f_right - f_left)/(2*h)
+	f_second_der = (f_right - 2.0*f_mid + f_left)/(h*h)
+
+	return 2.0*f_second_der/f_der
+
+def projected_new_error(nr_of_newton_iters, start_err, alpha):
+	# So yeah, this is hard to explain. TODO: Write a good explanation.
+	exponent = pow(2.0, nr_of_newton_iters)
+	return pow(alpha, exponent-1)*pow(start_err, exponent)
+
 def calc_computational_baseline_operations(n, f, is_binary):
 	numbers = [fabs(gauss(0,1))+1.0e8 for _ in range(n)]
 
@@ -23,7 +39,6 @@ def calc_computational_baseline_operations(n, f, is_binary):
 	t = time() - t0
 
 	return t/float(n)
-
 
 def objective_func_cont(x, data):
 	"""
@@ -43,9 +58,11 @@ def objective_func_cont(x, data):
 	par_samples = data[4]
 	roots = data[5]
 
-	# TODO: Check if the following 2 lines are slow,. They don't need to be recalculated everytime.
+	# TODO: Check if the following 2 lines are slow. They don't need to be recalculated everytime.
 	is_par_used = cgp.which_parameters_are_used()
 	nr_of_pars_used = sum(is_par_used)
+
+	
 
 	# One could imagine a function f, with one variable x, and two parameters a & b,
 	# where the function is f(x) = b*x. Which means that the parameter a is unused. This means 
@@ -81,10 +98,14 @@ def objective_func_cont(x, data):
 		par_sample = par_samples[i]
 
 		root_guess = func(par_sample, x) # Yes, I know that par_sample goes to cgp.x, and x goes to cgp.parameters. The naming is terrible, but it is the way it should be.
+		err = fabs(root_guess-root)
 
-		total_error += (root_guess-root)*(root_guess-root)
+		nr_of_newton_iters = 0 # TODO: SET THIS!
+		proj_err = projected_new_error(nr_of_newton_iters, fabs(root_guess-root), conv_factors[i])
+		projected_lost_decrease_in_error = err - proj_err
 
-		# TODO: Add the error from the timeing baselines
+		total_error += (err+projected_lost_decrease_in_error)*(err+projected_lost_decrease_in_error)
+
 	return sqrt(total_error)
 
 def objective_func_disc(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, data):
@@ -101,7 +122,6 @@ def objective_func_disc(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, data)
 	if nr_of_pars_used > 0:
 		# If some parameters are used in the model, then these will have to be tuned.
 		
-
 		# Then we do a curve-fitting of the numerical constants/parameters.
 		nr_of_pnts = len(pnts)
 
@@ -201,6 +221,7 @@ if __name__ == '__main__':
 
 	ops_running_times = [calc_computational_baseline_operations(nr_of_comp_iters, ops[i], is_binary_list[i]) for i in range(len(ops))]
 	# Since the last is id, we can subtract that as a baseline.
+	# TODO: If the operation has 2 operands, then so should the lambda that is used as a baseline.
 	for i in range(len(ops_running_times)):
 		ops_running_times[i] -= ops_running_times[-1]
 	print("The other running times are:", ops_running_times)
@@ -211,13 +232,11 @@ if __name__ == '__main__':
 	# Calc 0.5*f''(r)/f'(r) for each root r. This defines the rate of the
 	# local convergence. I mean, it's quadratic, but this is the coefficient.
 	conv_factors = [0.0]*len(roots)
-	der_approx = lambda f, x: 0.5*(f([x+1.0e-8])-f([x-1.0e-8]))*1.0e8
 	for i in range(len(roots)):
 		root = roots[i]
 		pars = parameter_samples[i]
-		func_der_curry = lambda x: func_der(x, pars)
 
-		conv_factors[i] = 0.5*fabs(der_approx(func_der_curry, root))
+		conv_factors[i] = calc_alpha_for_root(func, pars, root)
 
 	# Collect all the data objects the optimization needs.
 	optimization_data = [conv_factors, total_time, ops_running_times, parameter_samples, roots]
