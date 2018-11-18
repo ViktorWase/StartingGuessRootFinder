@@ -16,7 +16,7 @@ def calc_alpha_for_root(func, par_vals, x_root, h=1.0e-10):
 	f_der = (f_right - f_left)/(2*h)
 	f_second_der = (f_right - 2.0*f_mid + f_left)/(h*h)
 
-	return 2.0*f_second_der/f_der
+	return fabs(2.0*f_second_der/f_der)
 
 def projected_new_error(nr_of_newton_iters, start_err, alpha):
 	# So yeah, this is hard to explain. TODO: Write a good explanation.
@@ -40,6 +40,18 @@ def calc_computational_baseline_operations(n, f, is_binary):
 
 	return t/float(n)
 
+def calc_the_number_of_newton_iters_that_are_lost(cgp, running_times_ops, running_time_NR):
+	total_time = 0.0
+	nr_of_nodes = int((len(cgp.gene)-1)/3)
+	for node in range(nr_of_nodes):
+		if cgp.used_genes[node]:
+			op_nr = cgp.gene[3*node]
+			assert op_nr < len(cgp.op_table)
+
+			total_time += running_times_ops[op_nr]
+	newton_iters = total_time / running_time_NR
+	return newton_iters
+
 def objective_func_cont(x, data):
 	"""
 	The error function of the continous optimization.
@@ -62,7 +74,7 @@ def objective_func_cont(x, data):
 	is_par_used = cgp.which_parameters_are_used()
 	nr_of_pars_used = sum(is_par_used)
 
-	
+	nr_of_newton_iters = calc_the_number_of_newton_iters_that_are_lost(cgp, running_times_ops, running_time_NR)
 
 	# One could imagine a function f, with one variable x, and two parameters a & b,
 	# where the function is f(x) = b*x. Which means that the parameter a is unused. This means 
@@ -100,9 +112,11 @@ def objective_func_cont(x, data):
 		root_guess = func(par_sample, x) # Yes, I know that par_sample goes to cgp.x, and x goes to cgp.parameters. The naming is terrible, but it is the way it should be.
 		err = fabs(root_guess-root)
 
-		nr_of_newton_iters = 0 # TODO: SET THIS!
 		proj_err = projected_new_error(nr_of_newton_iters, fabs(root_guess-root), conv_factors[i])
 		projected_lost_decrease_in_error = err - proj_err
+
+		# clamp the error? TODO: Think about this. Is it wise?
+		projected_lost_decrease_in_error = max(projected_lost_decrease_in_error, 0.0)
 
 		total_error += (err+projected_lost_decrease_in_error)*(err+projected_lost_decrease_in_error)
 
