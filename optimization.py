@@ -115,7 +115,7 @@ def acceptance_prob(new_error, current_error, temp):
 	diff = new_error - current_error
 	return exp(-(diff)/temp)
 
-def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimization_data, max_iter=500, nr_of_pars=0, reheat_iter=100, remaining_time=None):
+def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimization_data, max_iter=500, nr_of_pars=0, reheat_iter=-1, remaining_time=None):
 	"""
 	Simulated anneling is a simple way of doing compinatorial optimization without getting stuck in local minima.
 	It basically works like this: 

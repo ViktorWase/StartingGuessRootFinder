@@ -16,11 +16,13 @@ def calc_alpha_for_root(func, par_vals, x_root, h=1.0e-10):
 	f_der = (f_right - f_left)/(2*h)
 	f_second_der = (f_right - 2.0*f_mid + f_left)/(h*h)
 
-	return fabs(2.0*f_second_der/f_der)
+	return min(fabs(2.0*f_second_der/(f_der+1.0e-10)), 1.0/(x_root*x_root+1.0e-10))
 
 def projected_new_error(nr_of_newton_iters, start_err, alpha):
 	# So yeah, this is hard to explain. TODO: Write a good explanation.
 	exponent = pow(2.0, nr_of_newton_iters)
+	if alpha==0:
+		return 0
 	return pow(alpha, exponent-1)*pow(start_err, exponent)
 
 def calc_computational_baseline_operations(n, f, is_binary):
@@ -229,11 +231,13 @@ if __name__ == '__main__':
 	print("The adjusted mean time for an iter of NR is", total_time, "sec.")
 
 	# Get computational baseline for all operations
-	ops = [lambda x,y: x+y, lambda x,y: x*y, lambda x: sqrt(x), lambda x,y: x-y,  lambda x,y: x/y, lambda x: x]
-	is_binary_list = [True,True,False,True,True,False]
+	# TODO: Create these automatically
+	ops = [lambda x: sin(x), lambda x: cos(x), lambda x,y: x+y, lambda x,y: x*y, lambda x: x*x, lambda x,y: x-y,  lambda x,y: x/y, lambda x: x]
+	is_binary_list = [False, False, True,True,False,True,True,False]
 	assert len(is_binary_list) == len(ops)
 
-	ops_running_times = [calc_computational_baseline_operations(nr_of_comp_iters, ops[i], is_binary_list[i]) for i in range(len(ops))]
+	nr_of_comp_iters_ops = nr_of_comp_iters*100
+	ops_running_times = [calc_computational_baseline_operations(nr_of_comp_iters_ops, ops[i], is_binary_list[i]) for i in range(len(ops))]
 	# Since the last is id, we can subtract that as a baseline.
 	# TODO: If the operation has 2 operands, then so should the lambda that is used as a baseline.
 	for i in range(len(ops_running_times)):
@@ -260,4 +264,4 @@ if __name__ == '__main__':
 	from operation_table import op_table
 	nr_of_funcs = len(op_table)
 	nr_of_parameters_for_cgp = 3
-	multistart_opt(roots, parameter_samples, nr_of_parameters, nr_of_funcs, nr_of_nodes, objective_func_disc, op_table, 'sa', optimization_data, nr_of_pars=nr_of_parameters_for_cgp, max_time=60*10)
+	multistart_opt(roots, parameter_samples, nr_of_parameters+1, nr_of_funcs, nr_of_nodes, objective_func_disc, op_table, 'sa', optimization_data, nr_of_pars=nr_of_parameters_for_cgp, max_time=60*60)
