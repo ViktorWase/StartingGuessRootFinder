@@ -10,14 +10,10 @@ from copy import copy, deepcopy
 from random import random, randint
 from time import time
 
-from sys import version_info
-if version_info >= (3,0):
-	from math import sqrt, inf, exp
-else:
-	from math import sqrt, exp
-	inf = 1.0e25
+from math import sqrt, exp
+inf = float('inf')
 
-from cgp import Operation, CGP
+from cgpy.cgp import Operation, CGP
 
 def create_random_gene(dims, nr_of_funcs, nr_of_nodes):
 	"""
@@ -46,7 +42,7 @@ def mutate(cgp_in, dims, nr_of_funcs, mute_rate=0.4):
 	gene = list(cgp_in.gene)
 	nodes = int((len(gene)-1)/3)
 
-	nr_of_used_parts =  sum(cgp_in.used_genes)+1 # The +1 is for the last number in the gene, which decides which node that is the output. THe -1 is for indexing.
+	nr_of_used_parts =  sum(cgp_in.used_nodes)+1 # The +1 is for the last number in the gene, which decides which node that is the output. THe -1 is for indexing.
 	used_part_2_mutate = 0 if nr_of_used_parts<=0 else randint(0, nr_of_used_parts-1)
 	used_part_counter = 0
 	counter = 0
@@ -55,7 +51,7 @@ def mutate(cgp_in, dims, nr_of_funcs, mute_rate=0.4):
 
 		# Make sure at least some part of the USED gene is mutated...
 		# TODO: REMOVE THE WHOLE THING WHER EIT MUTATES INTO SOMETHING NEW. It can mutate into itself.
-		if cgp_in.used_genes[i]:
+		if cgp_in.used_nodes[i]:
 			if used_part_counter == used_part_2_mutate:
 				assert has_forced_mutated == False
 				has_forced_mutated = True

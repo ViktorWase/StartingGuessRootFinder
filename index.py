@@ -1,9 +1,10 @@
 from random import gauss
 from copy import copy
 from time import time
-from math import sqrt, fabs, inf
+from math import sqrt, fabs, exp
+inf = float('inf')
 from newton_raphson import newton_raphson
-from cgp import CGP
+from cgpy.cgp import CGP
 from optimization import multistart_opt
 from pso import pso
 
@@ -46,7 +47,7 @@ def calc_the_number_of_newton_iters_that_are_lost(cgp, running_times_ops, runnin
 	total_time = 0.0
 	nr_of_nodes = int((len(cgp.gene)-1)/3)
 	for node in range(nr_of_nodes):
-		if cgp.used_genes[node]:
+		if cgp.used_nodes[node]:
 			op_nr = cgp.gene[3*node]
 			assert op_nr < len(cgp.op_table)
 
@@ -83,7 +84,7 @@ def objective_func_cont(x, data):
 	# that it doesn't have to be tuned, but the function still needs two parameters (at least it 
 	# thinks that it does). In these cases we just set a:=0 and tune only b.
 
-	def func(X, parameters=[], derivative=False, der_dir=0):
+	def func(X, parameters=[]):
 		# TODO: This shouldn't have to be done every time.
 		# Insert zeroes in the non-used parameters
 		pars = [0.0 for _ in range(cgp.nr_of_parameters)]
@@ -97,7 +98,7 @@ def objective_func_cont(x, data):
 				counter += 1
 
 		try:
-			return cgp.eval(X, parameters=pars, derivative=derivative, der_dir=der_dir)
+			return cgp.eval(X, parameters=pars)
 		except (ValueError, ZeroDivisionError): # Sometimes x gets really big and this can cause problems.
 			print("Math domain error in start error func.")
 			return 1.0e20
@@ -169,6 +170,28 @@ def objective_func_disc(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, data)
 		best_par_vals = pars
 
 	return (error, best_par_vals)
+
+def how_many_genes_exists(dims, nr_of_nodes, ignore_id=True):
+	from operation_table import op_table
+
+	nr_of_ops = len(op_table)
+	if ignore_id:
+		if 'id' in [op.op_name for op in op_table]:
+			nr_of_ops -= 1
+
+	nr_of_binary_ops = sum([1 if op.is_binary else 0 for op in op_table])
+	nr_of_unary_ops = nr_of_ops - nr_of_binary_ops
+
+	counter = 1
+	for i in range(nr_of_nodes):
+		prev_nodes = dims + i
+
+		counter *= nr_of_binary_ops*prev_nodes*prev_nodes + nr_of_unary_ops*prev_nodes
+
+	# And lastly the choice of output node
+	counter *= nr_of_nodes+dims
+
+	return counter
 
 if __name__ == '__main__':
 	from random import random
@@ -264,4 +287,4 @@ if __name__ == '__main__':
 	from operation_table import op_table
 	nr_of_funcs = len(op_table)
 	nr_of_parameters_for_cgp = 3
-	multistart_opt(roots, parameter_samples, nr_of_parameters+1, nr_of_funcs, nr_of_nodes, objective_func_disc, op_table, 'sa', optimization_data, nr_of_pars=nr_of_parameters_for_cgp, max_time=60*60)
+	multistart_opt(roots, parameter_samples, nr_of_parameters, nr_of_funcs, nr_of_nodes, objective_func_disc, op_table, 'sa', optimization_data, nr_of_pars=nr_of_parameters_for_cgp, max_time=60*60)
