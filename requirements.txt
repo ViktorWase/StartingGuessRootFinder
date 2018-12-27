@@ -1,1 +1,2 @@
-git+https://github.com/ViktorWase/Cgpy.git@de313382ebfe974dcd3ab100c367a01dc7d955fe#egg=cgpy
+--extra-index-url https://test.pypi.org/simple/
+cgpy
