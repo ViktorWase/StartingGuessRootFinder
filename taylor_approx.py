@@ -1,5 +1,5 @@
 from copy import deepcopy
-from random import gauss
+from random import gauss, random
 from math import sqrt, exp
 #from optimization import acceptance_prob
 def acceptance_prob(new_error, current_error, temp):
@@ -83,6 +83,9 @@ class TaylorApprox():
 		
 		self.func = deepcopy(func)
 		self.func_der = deepcopy(func_der)
+		nr_of_parameters = len(all_parameters[0])
+		for i in range(len(all_parameters)):
+			assert len(all_parameters[i]) == nr_of_parameters
 		self.nr_of_parameters = nr_of_parameters
 		#self.mean_root = sum(float(x)/len(all_roots) for x in all_roots)
 		self.expansion_point = self.optimize_expansion_point(func, func_der, all_roots, all_parameters)
