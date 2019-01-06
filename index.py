@@ -123,7 +123,7 @@ def objective_func_cont(x, data):
 
 		total_error += (err+projected_lost_decrease_in_error)*(err+projected_lost_decrease_in_error)
 
-	return sqrt(total_error)
+	return sqrt(total_error/n)
 
 def objective_func_disc(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, data):
 	cgp = copy(new_cgp) # TODO: Is this copy really needed?
@@ -193,34 +193,79 @@ def how_many_genes_exists(dims, nr_of_nodes, ignore_id=True):
 
 	return counter
 
-if __name__ == '__main__':
-	from random import random
-	from math import pi, sin, cos
-	func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
-	func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
-	parameter_generator = lambda : [random(), random()*2*pi]
-	nr_of_parameters = 2
-
-	# Get parameter samples
-	n = 100
+def generate_parameters(nr_of_parameters, parameter_generator, n=400):
+	assert n>0
+	assert nr_of_parameters > 0
 	parameter_samples_full = [parameter_generator() for _ in range(n)]
+	for tmp in parameter_samples_full:
+		assert len(tmp) == nr_of_parameters
+	return parameter_samples_full
 
-	# Find the roots for each parameter sample
+def binary_search_for_root(func, trials=1000, binary_search_iters=1000, sd=100, thresh=1.0e-12):
+	has_found_pos = False
+	has_found_neg = False
+	# Randomly search for a negative and positive pnt.
+	for _ in range(trials):
+		if has_found_neg and has_found_pos:
+			break
+		x = gauss(0, 100)
+		try:
+			val = func(x)
+		except:
+			val = None
+		if val!=None:
+			if not has_found_pos and val>0:
+				pos_x = x
+			elif not has_found_neg and val<0:
+				neg_x = x
+	if has_found_neg==False or has_found_pos==False:
+		return False
+
+	# Do binary search to find a root.
+	# This assumes that the function is continous.
+	for i in range(binary_search_iters):
+		x_mid = (pos_x+neg_x)*0.5
+		val = func(x_mid)
+		if fabs(val)<=thresh:
+			return x_mid, val
+		if val>0:
+			pos_x = x_mid
+		else:
+			neg_x = x_mid
+
+	return False
+
+
+def calc_roots(func, func_der, parameter_samples_full):
 	newt_rap_results = [newton_raphson(func, func_der, parameter, max_iter=10000, convg_lim=1.0e-14, x0=1.0e-8) for parameter in parameter_samples_full]
 	roots = []
 	parameter_samples = []
 	i = 0
+
+	nr_of_non_converged = 0
 	for res in newt_rap_results:
 		root, error = res
 		# Remove all roots that didn't converge.
 		if error<1.0e-12:
 			roots.append(root)
 			parameter_samples.append(parameter_samples_full[i])
+		else:
+			binary_search_res = binary_search_for_root(func)
+			if binary_search_res==False:
+				nr_of_non_converged += 1
+				pass
+			else:
+				print("YEPP---------------")
+				roots.append(binary_search_res[0])
+				parameter_samples.append(binary_search_res[0])
 		i += 1
-	
+	return roots, parameter_samples, nr_of_non_converged
+
+def calc_baseline(roots, parameter_samples, nr_of_comp_iters=10000):
 	# Get computational baseline for NR
+
+	assert len(roots) == len(parameter_samples)
 	total_time = 0.0
-	nr_of_comp_iters = 10000
 	for i in range(len(roots)):
 		# Create a few perturbances
 		par_sample = parameter_samples[i]
@@ -266,7 +311,19 @@ if __name__ == '__main__':
 	for i in range(len(ops_running_times)):
 		ops_running_times[i] -= ops_running_times[-1]
 	print("The other running times are:", ops_running_times)
+	return ops_running_times, total_time
 
+def cgp_find_starting_guess(func, func_der,	parameter_generator, nr_of_parameters, max_time_sec=60*60):
+	print("Starting cgp optimization algo.")
+	# Get parameter samples
+	parameter_samples_full = generate_parameters(nr_of_parameters, parameter_generator)
+
+	# Find the roots for each parameter sample
+	roots, parameter_samples, nr_of_non_converged = calc_roots(func, func_der, parameter_samples_full)
+
+	# Get computational baseline for NR
+	ops_running_times, total_time = calc_baseline(roots, parameter_samples)
+	
 	# Calculate the convergance factor of NR for each
 	# of the found roots.
 	# TODO: The following only works if the derivative is non-zero at the root. Generalize somehow!
@@ -286,5 +343,27 @@ if __name__ == '__main__':
 	nr_of_nodes = 7
 	from operation_table import op_table
 	nr_of_funcs = len(op_table)
-	nr_of_parameters_for_cgp = 3
-	multistart_opt(roots, parameter_samples, nr_of_parameters, nr_of_funcs, nr_of_nodes, objective_func_disc, op_table, 'sa', optimization_data, nr_of_pars=nr_of_parameters_for_cgp, max_time=60*60)
+	nr_of_parameters_for_cgp = 2
+	(best_sol, best_err, best_pars) = multistart_opt(roots, parameter_samples, nr_of_parameters, nr_of_funcs, nr_of_nodes, objective_func_disc, op_table, 'sa', optimization_data, nr_of_pars=nr_of_parameters_for_cgp, max_time=max_time_sec)
+
+	return (best_sol, best_err, best_pars)
+
+if __name__ == '__main__':
+	from random import random
+	from math import pi, sin, cos, acos
+	func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
+	func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
+	parameter_generator = lambda : [random()*0.1, random()*2*pi]
+	nr_of_parameters = 2
+
+
+	#func = lambda x, P: acos(1.0/ ( x[0]/P[0] - 1.0))+acos(1.0/ ( x[0]/P[1] - 1.0))-P[2] if x[0] >= 0 else 1.0e10
+	#func_der = lambda x, P: P[0] /( (x[0]-P[0])*(x[0]-P[0])*sqrt(1.0 - (P[0]/(x[0]-P[0]))**2))+P[1]/( (x[0]-P[1])*(x[0]-P[1])*sqrt(1.0 - (P[1]/(x[0]-P[1]))**2)) if x[0] >= 0 else 1.0
+	#parameter_generator = lambda :  [-0.9*random()-0.05, -0.9*random()-0.05 ,pi+pi*random()]
+	#nr_of_parameters = 3
+
+	(best_sol, best_err, best_pars) = cgp_find_starting_guess(func, func_der, parameter_generator, nr_of_parameters)
+	print(best_err, best_pars)
+	best_sol.print_function(parameters=best_pars)
+
+	
