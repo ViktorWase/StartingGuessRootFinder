@@ -8,6 +8,8 @@ The first value (x_0) in the root finding algorithm will then be set to b.
 x_0 := g(a,b)
 """
 
+# TODO: IS THIS FILE USED? I AM UNSURE.
+
 from sys import version_info
 if version_info >= (3,0):
 	from math import sqrt, inf, fabs
