@@ -47,7 +47,7 @@ class TaylorApprox():
 
 		best_of_all_itr = float('inf')
 		best_of_all_pnt = 0
-		for _ in range(10):
+		for _ in range(3):
 			temperature_itr = 0
 
 			root_span = max(all_roots) - min(all_roots)
@@ -57,8 +57,8 @@ class TaylorApprox():
 			best_exp_pnt = current_exp_pnt
 
 			for itr in range(max_iter):
-				if itr % 1000 == 0:
-					print("iter:", itr," of", max_iter)
+				#if itr % 1000 == 0:
+				#	print("iter:", itr," of", max_iter)
 				temp = float(max_iter-temperature_itr)/max_iter
 				# Do a small mutation to create a new function (aka solution)
 				new_exp_pnt = current_exp_pnt + gauss(0, root_span/40.0)
@@ -71,7 +71,7 @@ class TaylorApprox():
 					current_err = new_err
 
 					if new_err < best_err:
-						print("best yet:", new_err)
+						#print("best yet:", new_err)
 						best_err = new_err
 						best_exp_pnt = new_exp_pnt
 			if best_err<best_of_all_itr:

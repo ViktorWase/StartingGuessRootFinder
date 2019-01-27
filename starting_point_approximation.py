@@ -9,6 +9,7 @@ x_0 := g(a,b)
 """
 
 # TODO: IS THIS FILE USED? I AM UNSURE.
+assert False
 
 from sys import version_info
 if version_info >= (3,0):

@@ -7,6 +7,8 @@ from newton_raphson import newton_raphson
 from cgpy.cgp import CGP
 from optimization import multistart_opt
 from pso import pso
+from taylor_approx import TaylorApprox
+
 
 def calc_alpha_for_root(func, par_vals, x_root, h=1.0e-10):
 	# Calcs 2*f''(x)/f'(x)
@@ -193,7 +195,7 @@ def how_many_genes_exists(dims, nr_of_nodes, ignore_id=True):
 
 	return counter
 
-def generate_parameters(nr_of_parameters, parameter_generator, n=400):
+def generate_parameters(nr_of_parameters, parameter_generator, n=500):
 	assert n>0
 	assert nr_of_parameters > 0
 	parameter_samples_full = [parameter_generator() for _ in range(n)]
@@ -313,8 +315,7 @@ def calc_baseline(roots, parameter_samples, nr_of_comp_iters=10000):
 	print("The other running times are:", ops_running_times)
 	return ops_running_times, total_time
 
-def cgp_find_starting_guess(func, func_der,	parameter_generator, nr_of_parameters, max_time_sec=60*60):
-	print("Starting cgp optimization algo.")
+def calc_baselines_and_roots(func, func_der, parameter_generator, nr_of_parameters):
 	# Get parameter samples
 	parameter_samples_full = generate_parameters(nr_of_parameters, parameter_generator)
 
@@ -339,6 +340,17 @@ def cgp_find_starting_guess(func, func_der,	parameter_generator, nr_of_parameter
 	# Collect all the data objects the optimization needs.
 	optimization_data = [conv_factors, total_time, ops_running_times, parameter_samples, roots]
 
+	return optimization_data
+
+def get_constant_solution(roots):
+	n = len(roots)
+
+	return sum(roots)/float(n)
+
+def cgp_find_starting_guess(optimization_data, func, func_der,	parameter_generator, nr_of_parameters, max_time_sec=8*60*60):
+	print("Starting cgp optimization algo.")
+	[conv_factors, total_time, ops_running_times, parameter_samples, roots] = optimization_data
+
 	# Start the optimization.
 	nr_of_nodes = 7
 	from operation_table import op_table
@@ -350,20 +362,42 @@ def cgp_find_starting_guess(func, func_der,	parameter_generator, nr_of_parameter
 
 if __name__ == '__main__':
 	from random import random
-	from math import pi, sin, cos, acos
-	func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
-	func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
-	parameter_generator = lambda : [random()*0.1, random()*2*pi]
-	nr_of_parameters = 2
+	from math import pi, sin, cos, acos, sqrt
+	# EXP 1 - Planetary ellipse position
+	#func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
+	#func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
+	#parameter_generator = lambda : [random()*0.1, random()*2*pi]
+	#nr_of_parameters = 2
 
+	# EXP 2 - sqrt in range [0, 1]
+	func = lambda x, beta: x[0]*x[0] - beta[0]
+	func_der = lambda x, beta: 2*x[0]
+	parameter_generator = lambda : [random()]
+	nr_of_parameters = 1
 
 	#func = lambda x, P: acos(1.0/ ( x[0]/P[0] - 1.0))+acos(1.0/ ( x[0]/P[1] - 1.0))-P[2] if x[0] >= 0 else 1.0e10
 	#func_der = lambda x, P: P[0] /( (x[0]-P[0])*(x[0]-P[0])*sqrt(1.0 - (P[0]/(x[0]-P[0]))**2))+P[1]/( (x[0]-P[1])*(x[0]-P[1])*sqrt(1.0 - (P[1]/(x[0]-P[1]))**2)) if x[0] >= 0 else 1.0
 	#parameter_generator = lambda :  [-0.9*random()-0.05, -0.9*random()-0.05 ,pi+pi*random()]
 	#nr_of_parameters = 3
+	opt_data = calc_baselines_and_roots(func, func_der, parameter_generator, nr_of_parameters)
+	[conv_factors, total_time, ops_running_times, parameter_samples, roots] = opt_data
 
-	(best_sol, best_err, best_pars) = cgp_find_starting_guess(func, func_der, parameter_generator, nr_of_parameters)
-	print(best_err, best_pars)
-	best_sol.print_function(parameters=best_pars)
+
+	(best_sol, best_err, best_pars) = cgp_find_starting_guess(opt_data, func, func_der, parameter_generator, nr_of_parameters)
+	print("Cgp done")
+	
 
 	
+
+	tay = TaylorApprox(func, func_der, roots, parameter_samples)
+	con = get_constant_solution(roots)
+	n = len(roots)
+	print("Con:", con)
+	print("Taylor expansion pnt:", tay.expansion_point)
+	print("CGP function:")
+	print(best_err, best_pars)
+	best_sol.print_function(parameters=best_pars)
+	print("---------")
+	print(conv_factors)
+	print(total_time)
+	print(ops_running_times)

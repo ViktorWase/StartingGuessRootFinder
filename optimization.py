@@ -213,6 +213,7 @@ def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_
 		if optimizer=="sa":
 			(sol, err, pars) = sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimization_data, max_iter=max_iter, nr_of_pars=nr_of_pars, remaining_time=remaining_time)
 		elif optimizer=="es":
+			assert False # TODO: Does es work? Check.
 			(sol, err, pars) = es(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_iter=max_iter, nr_of_pars=nr_of_pars, remaining_time=remaining_time)
 		else:
 			print(optimizer, "is not a used optimizer.")
