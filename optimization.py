@@ -33,7 +33,78 @@ def create_random_gene(dims, nr_of_funcs, nr_of_nodes):
 	gene[counter] = randint(0, nr_of_nodes-1+dims)
 	return gene
 
-def mutate(cgp_in, dims, nr_of_funcs, mute_rate=0.4):
+
+def get_gene_max_values(dims, nr_of_parameters, len_of_op_table, nr_of_nodes, nodes_per_layer = 1):
+	"""
+	A gene is a list of n ints, that define the CGP. Each such number has 
+	a minimum value, and a maximum value. The minimum value is always zero.
+	This function will return a list of the n maximum values.
+	"""
+	# Check the inputdata
+	assert nodes_per_layer >= 1
+	assert nr_of_nodes > 0
+	assert dims > 0
+	assert nr_of_parameters >= 0
+
+	# The number of nodes has to be divisible by nodes_per_layer. 
+	# Otherwise the number of layers won't be an int, and that is strange.
+	assert nr_of_nodes%nodes_per_layer == 0 
+
+	dim_and_pars = dims + nr_of_parameters
+
+	# Each node has 3 ints: the two inputs and the operation.
+	len_of_gene = nr_of_nodes*3 + 1
+	max_vals = [-1]*len_of_gene
+
+	layer = 0
+	for node_count in range(nr_of_nodes):
+		nr_of_nodes_and_inputs_of_all_prev_layers = layer*nodes_per_layer + dim_and_pars
+
+		max_vals[3*node_count+2] = nr_of_nodes_and_inputs_of_all_prev_layers - 1
+		max_vals[3*node_count+1] = nr_of_nodes_and_inputs_of_all_prev_layers - 1
+		max_vals[3*node_count] = len_of_op_table-1
+
+		if node_count%nodes_per_layer == nodes_per_layer-1:
+			layer += 1
+
+	# The last int of the gene just points to one of the inputs, parameters or nodes and
+	# calls it the outout.
+	max_vals[-1] = dim_and_pars + nr_of_nodes - 1
+	assert min(max_vals)>=0
+	return max_vals
+
+
+def mutate(cgp_in, dims, nr_of_funcs):
+	"""
+	Mutates the cgp. Doesn't affect the input CGP.
+
+	Mutates parts randomly until it mutates a part of 
+	the gene that is used.
+	"""
+	assert cgp_in.has_setup_used_nodes
+	new_gene = list(cgp_in.gene)
+	nr_of_nondim_and_non_par_nodes = cgp_in.nr_of_nodes - cgp_in.dims - cgp_in.nr_of_parameters
+	max_vals = get_gene_max_values(cgp_in.dims, cgp_in.nr_of_parameters, len(cgp_in.op_table), nr_of_nondim_and_non_par_nodes, nodes_per_layer=cgp_in.nodes_per_layer)
+
+	assert int((len(cgp_in.gene)-1)/3)==len(cgp_in.used_nodes)
+
+	# Mutate the gene.
+	has_mutated_used_node = False
+	n = len(new_gene)
+	while has_mutated_used_node:
+		i = randint(0, n-1)
+		is_active = cgp_in.used_nodes[int(i/3)]
+		new_gene[i] = randint(0, max_vals[i])
+
+		if is_active and new_gene[i]!=cgp_in.gene[i]:
+			has_mutated_used_node=True
+
+	# Create the new CGP object
+	new_cgp = CGP(cgp_in.dims, cgp_in.op_table, new_gene, nr_of_parameters=cgp_in.nr_of_parameters, fast_setup = not cgp_in.has_setup_used_nodes)
+	return new_cgp
+
+
+def mutate_old(cgp_in, dims, nr_of_funcs, mute_rate=0.4):
 	"""
 	Mutates the cgp. Doesn't affect the input CGP.
 
@@ -155,6 +226,7 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optim
 		temp = float(max_iter-temperature_itr)/max_iter
 		# Do a small mutation to create a new function (aka solution)
 		new_cgp = mutate(current_cgp, dims+nr_of_pars, nr_of_funcs)
+		assert current_cgp.nr_of_parameters	== new_cgp.nr_of_parameters
 		#cgp = CGP(dims, op_table, new_sol, nr_of_parameters=nr_of_pars)
 		(new_error, new_pars) = error_func(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, optimization_data)
 
@@ -223,6 +295,7 @@ def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_
 			best_err = err
 			best_sol = sol
 			best_pars = pars
+		print(pars, nr_of_pars)
 		assert len(pars) == nr_of_pars
 
 		counter += 1

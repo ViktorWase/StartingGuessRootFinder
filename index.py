@@ -136,7 +136,7 @@ def objective_func_disc(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, data)
 	
 	# We ignore the constant CGPs, because they are dumb and treated separately.
 	if cgp.is_constant:
-		return (inf, [])
+		return (inf, [None]*nr_of_pars)
 
 	if nr_of_pars_used > 0:
 		# If some parameters are used in the model, then these will have to be tuned.
@@ -273,10 +273,14 @@ def calc_baseline(roots, parameter_samples, nr_of_comp_iters=10000):
 		par_sample = parameter_samples[i]
 		perturbances = [gauss(0, 1.0) for _ in range(nr_of_comp_iters)]
 
+		if X_NEEDS_TO_BE_POS:
+			for j in range(nr_of_comp_iters):
+				while roots[i] + perturbances[j] < 0:
+					perturbances[j] = gauss(0, 1.0)
+
 		t0 = time()
 		for j in range(nr_of_comp_iters):
 			x = roots[i] + perturbances[j]
-
 			temp1 = func([x], par_sample)
 			temp2 = func_der([x], par_sample)
 
@@ -362,7 +366,10 @@ def cgp_find_starting_guess(optimization_data, func, func_der,	parameter_generat
 
 if __name__ == '__main__':
 	from random import random
-	from math import pi, sin, cos, acos, sqrt
+	from math import pi, sin, cos, acos, sqrt, asin
+	from scipy.special import erf
+	X_NEEDS_TO_BE_POS = False
+
 	# EXP 1 - Planetary ellipse position
 	#func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
 	#func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
@@ -375,6 +382,20 @@ if __name__ == '__main__':
 	parameter_generator = lambda : [random()]
 	nr_of_parameters = 1
 
+	# EXP 3 - MGA Flyby calculation
+	#X_NEEDS_TO_BE_POS = True
+	#func = lambda x, beta: asin(beta[0]/(beta[0]+x[0]))+asin(beta[1]/(beta[1]+x[0]))-beta[2]
+	#func_der = lambda x, beta: -beta[0]/((beta[0]+x[0])*sqrt(x[0]*(2.0*beta[0]+x[0]))) - beta[1]/((beta[1]+x[0])*sqrt(x[0]*(2.0*beta[1]+x[0])))
+	#parameter_generator = lambda : [1.0/((random()*1.5+0.5)**2), 1.0/((random()*1.5+0.5)**2), random()*pi*0.5]
+	#nr_of_parameters = 3
+
+	# EXP 4 - Normal propabillity calculation
+	#func = lambda x, beta: -0.5*erf((beta[0]-x[0])/(1.41421356237*beta[1])) - beta[2]
+	#func_der = lambda x, beta: exp(-(x[0] - beta[0])*(x[0] - beta[0])/(2.0*beta[1]*beta[1]))/(2.50662827463*beta[1])
+	#parameter_generator = lambda : [gauss(0,1), fabs(gauss(0,1)), random()*0.9999+(1-0.9999)/2.0]
+	#nr_of_parameters = 3
+
+
 	#func = lambda x, P: acos(1.0/ ( x[0]/P[0] - 1.0))+acos(1.0/ ( x[0]/P[1] - 1.0))-P[2] if x[0] >= 0 else 1.0e10
 	#func_der = lambda x, P: P[0] /( (x[0]-P[0])*(x[0]-P[0])*sqrt(1.0 - (P[0]/(x[0]-P[0]))**2))+P[1]/( (x[0]-P[1])*(x[0]-P[1])*sqrt(1.0 - (P[1]/(x[0]-P[1]))**2)) if x[0] >= 0 else 1.0
 	#parameter_generator = lambda :  [-0.9*random()-0.05, -0.9*random()-0.05 ,pi+pi*random()]
@@ -382,15 +403,12 @@ if __name__ == '__main__':
 	opt_data = calc_baselines_and_roots(func, func_der, parameter_generator, nr_of_parameters)
 	[conv_factors, total_time, ops_running_times, parameter_samples, roots] = opt_data
 
-
-	(best_sol, best_err, best_pars) = cgp_find_starting_guess(opt_data, func, func_der, parameter_generator, nr_of_parameters)
-	print("Cgp done")
-	
-
-	
-
 	tay = TaylorApprox(func, func_der, roots, parameter_samples)
 	con = get_constant_solution(roots)
+
+	(best_sol, best_err, best_pars) = cgp_find_starting_guess(opt_data, func, func_der, parameter_generator, nr_of_parameters)
+	print("Cgp done")	
+
 	n = len(roots)
 	print("Con:", con)
 	print("Taylor expansion pnt:", tay.expansion_point)

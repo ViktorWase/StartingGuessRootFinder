@@ -34,7 +34,7 @@ class TaylorApprox():
 	def get_starting_guess(self, pars):
 		return self.get_starting_guess_with_pnt(pars, self.expansion_point)
 
-	def optimize_expansion_point(self, func, func_der, all_roots, all_parameters, max_iter=2000):
+	def optimize_expansion_point(self, func, func_der, all_roots, all_parameters, max_iter=2000, x_more_than_zero=False):
 		def error_l2(expansion_pnt):
 			err = 0.0
 			n = len(all_roots)
@@ -52,6 +52,8 @@ class TaylorApprox():
 
 			root_span = max(all_roots) - min(all_roots)
 			current_exp_pnt = min(all_roots)+root_span*random()
+			if current_exp_pnt < 0 and x_more_than_zero:
+				current_exp_pnt = -current_exp_pnt
 			current_err = error_l2(current_exp_pnt)
 			best_err = current_err
 			best_exp_pnt = current_exp_pnt
