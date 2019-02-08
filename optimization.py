@@ -91,7 +91,7 @@ def mutate(cgp_in, dims, nr_of_funcs):
 	# Mutate the gene.
 	has_mutated_used_node = False
 	n = len(new_gene)
-	while has_mutated_used_node:
+	while not has_mutated_used_node:
 		i = randint(0, n-1)
 		is_active = cgp_in.used_nodes[int(i/3)]
 		new_gene[i] = randint(0, max_vals[i])
