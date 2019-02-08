@@ -93,18 +93,26 @@ def mutate(cgp_in, dims, nr_of_funcs):
 	n = len(new_gene)
 	while not has_mutated_used_node:
 		i = randint(0, n-1)
-		is_active = cgp_in.used_nodes[int(i/3)]
 		new_gene[i] = randint(0, max_vals[i])
 
-		if is_active and new_gene[i]!=cgp_in.gene[i]:
-			# If the second input is changed then we need to check 
-			# that it is a binary operation
-			if i%3==2:
-				op = cgp.op_table[new_gene[i-2]]
-				if op.is_binary:
-					has_mutated_used_node = True
-			else:
-				has_mutated_used_node=True
+		# Check if the mutated part is used
+
+		# The last element of the gene is always used
+		if i==n-1:
+			if new_gene[i]!=cgp_in.gene[i]:
+				has_mutated_used_node = True
+		else:
+			is_active = cgp_in.used_nodes[int(i/3)]
+
+			if is_active and new_gene[i]!=cgp_in.gene[i]:
+				# If the second input is changed then we need to check 
+				# that it is a binary operation
+				if i%3==2:
+					op = cgp_in.op_table[new_gene[i-2]]
+					if op.is_binary:
+						has_mutated_used_node = True
+				else:
+					has_mutated_used_node=True
 
 	# Create the new CGP object
 	new_cgp = CGP(cgp_in.dims, cgp_in.op_table, new_gene, nr_of_parameters=cgp_in.nr_of_parameters, fast_setup = not cgp_in.has_setup_used_nodes)
