@@ -1,4 +1,4 @@
-from random import gauss, shuffle
+from random import gauss, shuffle, seed
 from math import fabs
 
 from os import listdir
@@ -10,25 +10,29 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class Net(nn.Module):
-	def __init__(self):
+	def __init__(self, channels=10):
 		super(Net, self).__init__()
 
 		self.inps = 3
 
-		self.lay1 = 10
-		self.lay2 = 10
+		self.lay1 = channels
+		self.lay2 = channels
+		self.lay3 = channels
 		self.outs = 1
 
 		self.fc1 = nn.Linear(self.inps, self.lay1)
-		self.d1 = nn.Dropout(p=0.4)
+		#self.d1 = nn.Dropout(p=0.04)
 		self.fc2 = nn.Linear(self.lay1, self.lay2)
-		self.d2 = nn.Dropout(p=0.4)
-		self.fc3 = nn.Linear(self.lay2, self.outs)
+		#self.d2 = nn.Dropout(p=0.04)
+		self.fc3 = nn.Linear(self.lay2, self.lay3)
+		#self.d3 = nn.Dropout(p=0.04)
+		self.fc4 = nn.Linear(self.lay3, self.outs)
 
 	def forward(self, x):
-		x = self.d1(F.relu(self.fc1(x)))
-		x = self.d2(F.relu(self.fc2(x)))
-		x = self.fc3(x)
+		x = F.relu(self.fc1(x))
+		x = F.relu(self.fc2(x))
+		x = F.relu(self.fc3(x))
+		x = self.fc4(x)
 
 		return x
 
@@ -61,6 +65,7 @@ def get_data(ids):
 	itds = []
 	inps = []
 	for id in ids:
+		print(id)
 		head_size = get_head_size(id)
 		files = listdir("itd_data/"+id)
 		for file in files:
@@ -98,35 +103,77 @@ def get_data(ids):
 
 
 if __name__ == '__main__':
-	inps, itds = get_data(['003'])
+	seed(0)
+	IDs = ['003', '008', '009', '010', '011', '012', '015', '017', '018', '019', '020', '021', '027', '028', '033', '040', '044', '048', '050', '051', '058', '059', '060', '061', '065', '119', '124', '126', '127', '131', '133', '134', '135', '137', '147', '148', '152', '153', '154', '155', '156', '158', '162', '163', '165']
+
+	idxs = [i for i in range(len(IDs))]
+	shuffle(idxs)
+	assert len(IDs) == 45
+	train_IDS = [IDs[idxs[i]] for i in range(30)]
+	test_IDS = [IDs[idxs[i]] for i in range(30, len(IDs))]
+
+	inps, itds = get_data(train_IDS)
 
 	from math import sin
 
-	in_data = [torch.FloatTensor(inp) for inp in inps]
-	out_data = [torch.FloatTensor(itd) for itd in itds]
+	errors = []
+	for channels in range(1, 10):
+		net = Net(channels)
 
-	net = Net()
+		#print(sum([fabs(el[0]) for el in itds])/len(itds))
 
-	crit = nn.MSELoss()
-	optimizer = optim.Adam(net.parameters())
-	print("Starting training")
-	for epoch in range(1000):
-		loss_sum = 0.0
-		for i in range(len(in_data)):
-			# TODO: Batchsize
+		crit = nn.MSELoss()
+		optimizer = optim.Adam(net.parameters())
+		print("Starting training")
 
-			inps = in_data[i]
-			outs_true = out_data[i]
+		c = 0
+		batchsize = 32
+		inps_tensor = []
+		outs_true = []
+		for epoch in range(100):
+			loss_sum = 0.0
+			for i in range(len(inps)):
+				# TODO: Batchsize
 
-			optimizer.zero_grad()
+				inps_tensor.append(inps[i])
+				outs_true.append(itds[i])
 
-			outs = net(inps)
+				c += 1
+				if c==batchsize:
+					optimizer.zero_grad()
+					
+					inps_tensor = torch.FloatTensor(inps_tensor)
+					outs_true = torch.FloatTensor(outs_true)
+					outs = net(inps_tensor)
 
-			loss = crit(outs, outs_true)
-			loss_sum += loss.item()
+					loss = crit(outs, outs_true)
+					loss_sum += loss.item()
 
-			loss.backward()
-			optimizer.step()
 
-		if epoch%1==0:
-			print(loss_sum)
+					loss.backward()
+					optimizer.step()
+
+
+					inps_tensor = []
+					outs_true = []
+					c = 0
+
+
+			#if epoch%1==0:
+			#	print(loss_sum)
+
+		# Validation
+		print("Starting Validation")
+		net.train(False)
+		error = 0.0
+		for i in range(len(inps)):
+			inps_tensor = torch.FloatTensor(inps[i])
+			outs_true = torch.FloatTensor(itds[i])
+			outs = net(inps_tensor)
+
+			error += fabs(outs.item()-outs_true)/ len(inps)
+		errors.append(error)
+		print("Error of", channels, "channels:", error)
+	print(errors)
+
+
