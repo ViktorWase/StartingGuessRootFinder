@@ -11,9 +11,10 @@ from random import random, randint
 from time import time
 
 from math import sqrt, exp
+from cgpy.cgp import Operation, CGP
+
 inf = float('inf')
 
-from cgpy.cgp import Operation, CGP
 
 def create_random_gene(dims, nr_of_funcs, nr_of_nodes):
 	"""
@@ -34,9 +35,9 @@ def create_random_gene(dims, nr_of_funcs, nr_of_nodes):
 	return gene
 
 
-def get_gene_max_values(dims, nr_of_parameters, len_of_op_table, nr_of_nodes, nodes_per_layer = 1):
+def get_gene_max_values(dims, nr_of_parameters, len_of_op_table, nr_of_nodes, nodes_per_layer=1):
 	"""
-	A gene is a list of n ints, that define the CGP. Each such number has 
+	A gene is a list of n ints, that define the CGP. Each such number has
 	a minimum value, and a maximum value. The minimum value is always zero.
 	This function will return a list of the n maximum values.
 	"""
@@ -46,9 +47,9 @@ def get_gene_max_values(dims, nr_of_parameters, len_of_op_table, nr_of_nodes, no
 	assert dims > 0
 	assert nr_of_parameters >= 0
 
-	# The number of nodes has to be divisible by nodes_per_layer. 
+	# The number of nodes has to be divisible by nodes_per_layer.
 	# Otherwise the number of layers won't be an int, and that is strange.
-	assert nr_of_nodes%nodes_per_layer == 0 
+	assert nr_of_nodes % nodes_per_layer == 0
 
 	dim_and_pars = dims + nr_of_parameters
 
@@ -78,7 +79,7 @@ def mutate(cgp_in, dims, nr_of_funcs):
 	"""
 	Mutates the cgp. Doesn't affect the input CGP.
 
-	Mutates parts randomly until it mutates a part of 
+	Mutates parts randomly until it mutates a part of
 	the gene that is used.
 	"""
 	assert cgp_in.has_setup_used_nodes
@@ -86,7 +87,7 @@ def mutate(cgp_in, dims, nr_of_funcs):
 	nr_of_nondim_and_non_par_nodes = cgp_in.nr_of_nodes - cgp_in.dims - cgp_in.nr_of_parameters
 	max_vals = get_gene_max_values(cgp_in.dims, cgp_in.nr_of_parameters, len(cgp_in.op_table), nr_of_nondim_and_non_par_nodes, nodes_per_layer=cgp_in.nodes_per_layer)
 
-	assert int((len(cgp_in.gene)-1)/3)==len(cgp_in.used_nodes)
+	assert int((len(cgp_in.gene)-1)/3) == len(cgp_in.used_nodes)
 
 	# Mutate the gene.
 	has_mutated_used_node = False
@@ -98,24 +99,24 @@ def mutate(cgp_in, dims, nr_of_funcs):
 		# Check if the mutated part is used
 
 		# The last element of the gene is always used
-		if i==n-1:
-			if new_gene[i]!=cgp_in.gene[i]:
+		if i == n-1:
+			if new_gene[i] != cgp_in.gene[i]:
 				has_mutated_used_node = True
 		else:
 			is_active = cgp_in.used_nodes[int(i/3)]
 
-			if is_active and new_gene[i]!=cgp_in.gene[i]:
-				# If the second input is changed then we need to check 
+			if is_active and new_gene[i] != cgp_in.gene[i]:
+				# If the second input is changed then we need to check
 				# that it is a binary operation
-				if i%3==2:
+				if i % 3 == 2:
 					op = cgp_in.op_table[new_gene[i-2]]
 					if op.is_binary:
 						has_mutated_used_node = True
 				else:
-					has_mutated_used_node=True
+					has_mutated_used_node = True
 
 	# Create the new CGP object
-	new_cgp = CGP(cgp_in.dims, cgp_in.op_table, new_gene, nr_of_parameters=cgp_in.nr_of_parameters, fast_setup = not cgp_in.has_setup_used_nodes)
+	new_cgp = CGP(cgp_in.dims, cgp_in.op_table, new_gene, nr_of_parameters=cgp_in.nr_of_parameters, fast_setup=not cgp_in.has_setup_used_nodes)
 	return new_cgp
 
 
@@ -128,7 +129,7 @@ def mutate_old(cgp_in, dims, nr_of_funcs, mute_rate=0.4):
 	gene = list(cgp_in.gene)
 	nodes = int((len(gene)-1)/3)
 
-	nr_of_used_parts =  sum(cgp_in.used_nodes)+1 # The +1 is for the last number in the gene, which decides which node that is the output. THe -1 is for indexing.
+	nr_of_used_parts = sum(cgp_in.used_nodes)+1  # The +1 is for the last number in the gene, which decides which node that is the output. THe -1 is for indexing.
 	used_part_2_mutate = 0 if nr_of_used_parts<=0 else randint(0, nr_of_used_parts-1)
 	used_part_counter = 0
 	counter = 0
@@ -189,6 +190,7 @@ def mutate_old(cgp_in, dims, nr_of_funcs, mute_rate=0.4):
 	assert dims == cgp_in.dims+cgp_in.nr_of_parameters
 	return CGP(cgp_in.dims, cgp_in.op_table, gene, nr_of_parameters=cgp_in.nr_of_parameters)
 
+
 def acceptance_prob(new_error, current_error, temp):
 	"""
 	The acceptance probability depends on the difference in the objective
@@ -197,10 +199,11 @@ def acceptance_prob(new_error, current_error, temp):
 	diff = new_error - current_error
 	return exp(-(diff)/temp)
 
+
 def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimization_data, max_iter=500, nr_of_pars=0, reheat_iter=-1, remaining_time=None):
 	"""
 	Simulated anneling is a simple way of doing compinatorial optimization without getting stuck in local minima.
-	It basically works like this: 
+	It basically works like this:
 
 	1) take the current solution and apply a small change to it
 
@@ -237,18 +240,17 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optim
 
 	for itr in range(max_iter):
 		if itr % 50 == 0:
-			print("iter:", itr," of", max_iter)
+			print("iter:", itr, " of", max_iter)
 		temp = float(max_iter-temperature_itr)/max_iter
 		# Do a small mutation to create a new function (aka solution)
 		new_cgp = mutate(current_cgp, dims+nr_of_pars, nr_of_funcs)
-		assert current_cgp.nr_of_parameters	== new_cgp.nr_of_parameters
+		assert current_cgp.nr_of_parameters == new_cgp.nr_of_parameters
 		#cgp = CGP(dims, op_table, new_sol, nr_of_parameters=nr_of_pars)
 		(new_error, new_pars) = error_func(f_vals, pnts, dims, new_cgp, nr_of_pars, op_table, optimization_data)
 
 		temperature_itr += 1
 
-
-		if new_error < current_error or acceptance_prob(new_error, current_error, temp)<random():
+		if new_error < current_error or acceptance_prob(new_error, current_error, temp) < random():
 			#current_sol = new_sol
 			current_cgp = new_cgp
 			current_error = new_error
@@ -269,7 +271,7 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optim
 				iterations_since_update = 0
 				print("Reheating.")
 
-		if remaining_time!=None and time()-start_time >= remaining_time:
+		if remaining_time != None and time()-start_time >= remaining_time:
 			break
 
 	return (best_cgp, best_error, best_pars)
@@ -292,16 +294,13 @@ def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_
 	remaining_time = True
 
 	while True:
-		print("STARTING NEW:",counter+1,"of", multi_starts )
+		print("STARTING NEW:", counter+1, "of", multi_starts)
 
 		if max_time != None:
 			passed_time = time() - start_time
 			remaining_time = max_time - passed_time
-		if optimizer=="sa":
+		if optimizer == "sa":
 			(sol, err, pars) = sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optimization_data, max_iter=max_iter, nr_of_pars=nr_of_pars, remaining_time=remaining_time)
-		elif optimizer=="es":
-			assert False # TODO: Does es work? Check.
-			(sol, err, pars) = es(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, max_iter=max_iter, nr_of_pars=nr_of_pars, remaining_time=remaining_time)
 		else:
 			print(optimizer, "is not a used optimizer.")
 			assert False
@@ -325,4 +324,3 @@ def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_
 			else:
 				print(time() - start_time, max_time)
 	return (best_sol, best_err, best_pars)
-
