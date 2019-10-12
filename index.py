@@ -31,10 +31,10 @@ def projected_new_error(nr_of_newton_iters, start_err, alpha):
 
 
 def calc_computational_baseline_operations(n, f, is_binary):
-	numbers = [fabs(gauss(0, 1))+1.0e8 for _ in range(n)]
+	numbers = [fabs(gauss(0, 1))+1.0e-8 for _ in range(n)]
 
 	if is_binary:
-		second_numbers = [fabs(gauss(0, 1))+1.0e8 for _ in range(n)]
+		second_numbers = [fabs(gauss(0, 1))+1.0e-8 for _ in range(n)]
 
 	t0 = time()
 	if is_binary:
@@ -197,7 +197,7 @@ def how_many_genes_exists(dims, nr_of_nodes, ignore_id=True):
 	return counter
 
 
-def generate_parameters(nr_of_parameters, parameter_generator, n=50):
+def generate_parameters(nr_of_parameters, parameter_generator, n=250):
 	assert n > 0
 	assert nr_of_parameters > 0
 	parameter_samples_full = [parameter_generator() for _ in range(n)]
@@ -206,7 +206,7 @@ def generate_parameters(nr_of_parameters, parameter_generator, n=50):
 	return parameter_samples_full
 
 
-def binary_search_for_root(func, trials=1000, binary_search_iters=1000, sd=100, thresh=1.0e-14):
+def binary_search_for_root(func, trials=1000, binary_search_iters=1000, sd=100, thresh=1.0e-12):
 	has_found_pos = False
 	has_found_neg = False
 	# Randomly search for a negative and positive pnt.
@@ -241,7 +241,7 @@ def binary_search_for_root(func, trials=1000, binary_search_iters=1000, sd=100, 
 
 
 def calc_roots(func, func_der, parameter_samples_full):
-	newt_rap_results = [newton_raphson(func, func_der, parameter, max_iter=10000, convg_lim=1.0e-14, x0=1.0e-8) for parameter in parameter_samples_full]
+	newt_rap_results = [newton_raphson(func, func_der, parameter, max_iter=10000, convg_lim=1.0e-12, x0=1.0e-8) for parameter in parameter_samples_full]
 	roots = []
 	parameter_samples = []
 	i = 0
@@ -369,7 +369,7 @@ def cgp_find_starting_guess(optimization_data, func, func_der,	parameter_generat
 	nr_of_nodes = 7
 	from operation_table import op_table
 	nr_of_funcs = len(op_table)
-	nr_of_parameters_for_cgp = 2
+	nr_of_parameters_for_cgp = 3
 	(best_sol, best_err, best_pars) = multistart_opt(roots, parameter_samples, nr_of_parameters, nr_of_funcs, nr_of_nodes, objective_func_disc, op_table, 'sa', optimization_data, nr_of_pars=nr_of_parameters_for_cgp, max_time=max_time_sec)
 
 	return (best_sol, best_err, best_pars)
@@ -380,19 +380,19 @@ if __name__ == '__main__':
 	from math import pi, sin, cos, acos, sqrt, asin
 	from scipy.special import erf
 	X_NEEDS_TO_BE_POS = False
-	print("Starting")
+	print("Starting, time:", time())
 
 	# EXP 1 - Planetary ellipse position
-	# func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
-	# func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
-	# parameter_generator = lambda : [random()*0.1, random()*2*pi]
-	# nr_of_parameters = 2
+	func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
+	func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
+	parameter_generator = lambda : [random()*0.1, random()*2*pi]
+	nr_of_parameters = 2
 
 	# EXP 2 - sqrt in range [0, 1]
-	func = lambda x, beta: x[0]*x[0] - beta[0]
-	func_der = lambda x, beta: 2*x[0]
-	parameter_generator = lambda : [random()]
-	nr_of_parameters = 1
+	# func = lambda x, beta: x[0]*x[0] - beta[0]
+	# func_der = lambda x, beta: 2*x[0]
+	# parameter_generator = lambda: [random()]
+	# nr_of_parameters = 1
 
 	# EXP 3 - MGA Flyby calculation
 	# X_NEEDS_TO_BE_POS = True
@@ -402,8 +402,10 @@ if __name__ == '__main__':
 	# nr_of_parameters = 3
 
 	# EXP 4 - Normal propabillity calculation
-	# func = lambda x, beta: -0.5*erf((beta[0]-x[0])/(1.41421356237*beta[1])) - beta[2]
-	# func_der = lambda x, beta: exp(-(x[0] - beta[0])*(x[0] - beta[0])/(2.0*beta[1]*beta[1]))/(2.50662827463*beta[1])
+	## func = lambda x, beta: -0.5*erf((beta[0]-x[0])/(1.41421356237*beta[1])) - beta[2]
+	# func = lambda x, beta: 0.5+erf((beta[0]-x[0])/(2.82842712475*beta[1])) - beta[2]
+	## func_der = lambda x, beta: exp(-(x[0] - beta[0])*(x[0] - beta[0])/(2.0*beta[1]*beta[1]))/(2.50662827463*beta[1])
+	# func_der = lambda x, beta: 0.3989422804 * exp(-(x[0] - beta[0])*(x[0] - beta[0])/(2.0*beta[1]*beta[1]))/(beta[1])
 	# parameter_generator = lambda : [gauss(0,1), fabs(gauss(0,1)), random()*0.9999+(1-0.9999)/2.0]
 	# nr_of_parameters = 3
 
@@ -466,10 +468,10 @@ if __name__ == '__main__':
 	nr_of_parameters = 3
 	"""
 
-	# func = lambda x, P: acos(1.0/ ( x[0]/P[0] - 1.0))+acos(1.0/ ( x[0]/P[1] - 1.0))-P[2] if x[0] >= 0 else 1.0e10
-	# func_der = lambda x, P: P[0] /( (x[0]-P[0])*(x[0]-P[0])*sqrt(1.0 - (P[0]/(x[0]-P[0]))**2))+P[1]/( (x[0]-P[1])*(x[0]-P[1])*sqrt(1.0 - (P[1]/(x[0]-P[1]))**2)) if x[0] >= 0 else 1.0
-	# parameter_generator = lambda :  [-0.9*random()-0.05, -0.9*random()-0.05 ,pi+pi*random()]
-	# nr_of_parameters = 3
+	#func = lambda x, P: acos(1.0/ ( x[0]/P[0] - 1.0))+acos(1.0/ ( x[0]/P[1] - 1.0))-P[2] if x[0] >= 0 else 1.0e10
+	#func_der = lambda x, P: P[0] /( (x[0]-P[0])*(x[0]-P[0])*sqrt(1.0 - (P[0]/(x[0]-P[0]))**2))+P[1]/( (x[0]-P[1])*(x[0]-P[1])*sqrt(1.0 - (P[1]/(x[0]-P[1]))**2)) if x[0] >= 0 else 1.0
+	#parameter_generator = lambda :  [-0.9*random()-0.05, -0.9*random()-0.05 ,pi+pi*random()]
+	#nr_of_parameters = 3
 
 
 	print("Calc baselines and roots")
@@ -519,7 +521,6 @@ if __name__ == '__main__':
 
 	all_cgp_times = [0.0]*n
 	cgp_func = False
-	assert cgp_func
 	for i in range(n):
 		t0 = perf_counter()
 		pars = par_samples[i]

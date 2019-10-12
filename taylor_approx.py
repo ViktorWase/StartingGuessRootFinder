@@ -1,7 +1,9 @@
 from copy import deepcopy
 from random import gauss, random
 from math import sqrt, exp
-#from optimization import acceptance_prob
+# from optimization import acceptance_prob
+
+
 def acceptance_prob(new_error, current_error, temp):
 	"""
 	The acceptance probability depends on the difference in the objective
@@ -9,6 +11,7 @@ def acceptance_prob(new_error, current_error, temp):
 	"""
 	diff = new_error - current_error
 	return exp(-(diff)/temp)
+
 
 class TaylorApprox():
 	"""
@@ -34,12 +37,12 @@ class TaylorApprox():
 	def get_starting_guess(self, pars):
 		return self.get_starting_guess_with_pnt(pars, self.expansion_point)
 
-	def optimize_expansion_point(self, func, func_der, all_roots, all_parameters, max_iter=2000, x_more_than_zero=False):
+	def optimize_expansion_point(self, func, func_der, all_roots, all_parameters, max_iter=10000, x_more_than_zero=False, reruns=5):
 		def error_l2(expansion_pnt):
 			err = 0.0
 			n = len(all_roots)
 			assert n == len(all_parameters)
-			assert n>0
+			assert n > 0
 			for i in range(n):
 				diff = self.get_starting_guess_with_pnt(all_parameters[i], expansion_pnt)-all_roots[i]
 				err += diff*diff
@@ -47,7 +50,8 @@ class TaylorApprox():
 
 		best_of_all_itr = float('inf')
 		best_of_all_pnt = 0
-		for _ in range(3):
+		assert reruns > 0
+		for _ in range(reruns):
 			temperature_itr = 0
 
 			root_span = max(all_roots) - min(all_roots)
@@ -59,38 +63,38 @@ class TaylorApprox():
 			best_exp_pnt = current_exp_pnt
 
 			for itr in range(max_iter):
-				#if itr % 1000 == 0:
-				#	print("iter:", itr," of", max_iter)
+				# if itr % 1000 == 0:
+				# 	print("iter:", itr," of", max_iter)
 				temp = float(max_iter-temperature_itr)/max_iter
 				# Do a small mutation to create a new function (aka solution)
-				new_exp_pnt = current_exp_pnt + gauss(0, root_span/40.0)
-				#cgp = CGP(dims, op_table, new_sol, nr_of_parameters=nr_of_pars)
+				new_exp_pnt = current_exp_pnt + gauss(0, root_span/50.0)
+				# cgp = CGP(dims, op_table, new_sol, nr_of_parameters=nr_of_pars)
 				new_err = error_l2(new_exp_pnt)
 
 				temperature_itr += 1
-				if new_err < current_err or acceptance_prob(new_err, current_err, temp)<random():
+				if new_err < current_err or acceptance_prob(new_err, current_err, temp) < random():
 					current_exp_pnt = new_exp_pnt
 					current_err = new_err
 
 					if new_err < best_err:
-						#print("best yet:", new_err)
+						# print("best yet:", new_err)
 						best_err = new_err
 						best_exp_pnt = new_exp_pnt
-			if best_err<best_of_all_itr:
+			if best_err < best_of_all_itr:
 				best_of_all_itr = best_err
 				best_of_all_pnt = best_exp_pnt
 		return best_of_all_pnt
 
 	def __init__(self, func, func_der, all_roots, all_parameters):
-		
 		self.func = deepcopy(func)
 		self.func_der = deepcopy(func_der)
 		nr_of_parameters = len(all_parameters[0])
 		for i in range(len(all_parameters)):
 			assert len(all_parameters[i]) == nr_of_parameters
 		self.nr_of_parameters = nr_of_parameters
-		#self.mean_root = sum(float(x)/len(all_roots) for x in all_roots)
+		# self.mean_root = sum(float(x)/len(all_roots) for x in all_roots)
 		self.expansion_point = self.optimize_expansion_point(func, func_der, all_roots, all_parameters)
+
 
 if __name__ == '__main__':
 	from math import acos, sqrt, pi
@@ -100,8 +104,7 @@ if __name__ == '__main__':
 	func = lambda x, P: acos(1.0/ ( x[0]/P[0] - 1.0))+acos(1.0/ ( x[0]/P[1] - 1.0))-P[2] if x[0] >= 0 else 1.0e10
 	func_der = lambda x, P: P[0] /( (x[0]-P[0])*(x[0]-P[0])*sqrt(1.0 - (P[0]/(x[0]-P[0]))**2))+P[1]/( (x[0]-P[1])*(x[0]-P[1])*sqrt(1.0 - (P[1]/(x[0]-P[1]))**2)) if x[0] >= 0 else 1.0
 
-
-	parameter_generator = lambda :  [-0.9*random()-0.05, -0.9*random()-0.05 ,pi+pi*random()]
+	parameter_generator = lambda:  [-0.9*random()-0.05, -0.9*random()-0.05, pi+pi*random()]
 
 	nr_of_parameters = 3
 
@@ -119,11 +122,10 @@ if __name__ == '__main__':
 	for res in newt_rap_results:
 		root, error = res
 		# Remove all roots that didn't converge.
-		if error<1.0e-12:
+		if error < 1.0e-12:
 			roots.append(root)
 			parameter_samples.append(parameter_samples_full[i])
 		i += 1
-	
 
 	tay = TaylorApprox(func, func_der, roots, parameter_samples)
 	from math import fabs
@@ -131,7 +133,7 @@ if __name__ == '__main__':
 	const_mean = 0.0
 	tay_mean = 0.0
 	mean = sum(r for r in roots)/len(roots)
-	assert len(roots)==len(parameter_samples)
+	assert len(roots) == len(parameter_samples)
 	for i in range(len(roots)):
 		diff = fabs(roots[i]-tay.get_starting_guess(parameter_samples[i]))
 		tay_mean += diff/len(roots)

@@ -256,7 +256,7 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optim
 			current_error = new_error
 
 			if new_error < best_error:
-				print("best yet:", new_error)
+				print("best yet:", new_error, " at time:", time())
 				#write_2_file(new_pars, itr, current_error, 'sa',current_cgp.convert2str(parameters=new_pars))
 				new_cgp.print_function(parameters=new_pars)
 				best_cgp = deepcopy(new_cgp)
@@ -271,7 +271,7 @@ def sa(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_table, optim
 				iterations_since_update = 0
 				print("Reheating.")
 
-		if remaining_time != None and time()-start_time >= remaining_time:
+		if remaining_time is not None and time()-start_time >= remaining_time:
 			break
 
 	return (best_cgp, best_error, best_pars)
@@ -285,18 +285,18 @@ def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_
 	best_sol = None
 	best_pars = None
 
-	if max_time != None:
+	if max_time is not None:
 		multi_starts = None
 
 	counter = 0
 
 	start_time = time()
-	remaining_time = True
+	remaining_time = None
 
 	while True:
 		print("STARTING NEW:", counter+1, "of", multi_starts)
 
-		if max_time != None:
+		if max_time is not None:
 			passed_time = time() - start_time
 			remaining_time = max_time - passed_time
 		if optimizer == "sa":
@@ -314,7 +314,7 @@ def multistart_opt(f_vals, pnts, dims, nr_of_funcs, nr_of_nodes, error_func, op_
 
 		counter += 1
 
-		if multi_starts != None:
+		if multi_starts is not None:
 			if counter == multi_starts:
 				break
 		else:

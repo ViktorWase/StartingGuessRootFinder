@@ -1,6 +1,7 @@
 from math import fabs
 from random import gauss
 
+
 def newton_raphson(func, func_der, parameters, max_iter=1000, convg_lim=1.0e-12, x0=1.0e-8):
 	"""
 	A basic version of the Newton-Raphson root finding method. Note that both input and output
@@ -20,6 +21,7 @@ def newton_raphson(func, func_der, parameters, max_iter=1000, convg_lim=1.0e-12,
 	error = fabs(f)
 	return (x, error)
 
+
 def bisection_method(x_neg, x_pos, func, parameters, max_iter=1000, convg_lim=1.0e-12, x0=1.0e-8):
 	assert func([x_neg], parameters) <= 0
 	assert func([x_pos], parameters) >= 0
@@ -36,6 +38,7 @@ def bisection_method(x_neg, x_pos, func, parameters, max_iter=1000, convg_lim=1.
 		else:
 			x_pos = x
 	return (x, fabs(f))
+
 
 def find_pos_and_negative(func, parameters):
 	x_1 = gauss(0.0, 1.0)
@@ -58,6 +61,7 @@ def find_pos_and_negative(func, parameters):
 	else:
 		return (x_1, x_2)
 
+
 def bisection_root_finder(func, parameters, max_iter=1000, convg_lim=1.0e-12):
 	(x_neg, x_pos) = find_pos_and_negative(func, parameters)
 
@@ -66,14 +70,13 @@ def bisection_root_finder(func, parameters, max_iter=1000, convg_lim=1.0e-12):
 
 	return bisection_method(x_neg, x_pos, func, parameters, max_iter=max_iter, convg_lim=convg_lim)
 
+
 def root_finders(func, func_der, parameters):
 	(x, err) = newton_raphson(func, func_der, parameters)
 
-	
 	(x_b, err_b) = bisection_root_finder(func, parameters)
 	if err_b < err:
 		err = err_b
-		x=x_b
-	
-	return (x, err)
+		x = x_b
 
+	return (x, err)
