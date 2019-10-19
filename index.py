@@ -261,8 +261,12 @@ def calc_roots(func, func_der, parameter_samples_full):
 				nr_of_non_converged += 1
 				pass
 			else:
-				roots.append(binary_search_res[0])
-				parameter_samples.append(binary_search_res[0])
+				error = binary_search_res[1]
+				if fabs(error) < 1.0e-12:
+					roots.append(binary_search_res[0])
+					parameter_samples.append(parameter)
+				else:
+					nr_of_non_converged += 1
 		i += 1
 	return roots, parameter_samples, nr_of_non_converged
 
@@ -329,6 +333,8 @@ def calc_baselines_and_roots(func, func_der, parameter_generator, nr_of_paramete
 	# Get parameter samples
 	parameter_samples_full = generate_parameters(nr_of_parameters, parameter_generator)
 	print("1")
+	print(parameter_samples_full)
+
 	# Find the roots for each parameter sample
 	roots, parameter_samples, nr_of_non_converged = calc_roots(func, func_der, parameter_samples_full)
 	assert len(roots) > 0
@@ -377,16 +383,16 @@ def cgp_find_starting_guess(optimization_data, func, func_der,	parameter_generat
 
 if __name__ == '__main__':
 	from random import random
-	from math import pi, sin, cos, acos, sqrt, asin
+	from math import pi, sin, cos, acos, sqrt, asin, exp
 	from scipy.special import erf
 	X_NEEDS_TO_BE_POS = False
 	print("Starting, time:", time())
 
 	# EXP 1 - Planetary ellipse position
-	func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
-	func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
-	parameter_generator = lambda : [random()*0.1, random()*2*pi]
-	nr_of_parameters = 2
+	# func = lambda x, beta: x[0] - beta[0]*sin(x[0]) - beta[1]
+	# func_der = lambda x, beta: 1.0 - beta[0]*cos(x[0])
+	# parameter_generator = lambda : [random()*0.1, random()*2*pi]
+	# nr_of_parameters = 2
 
 	# EXP 2 - sqrt in range [0, 1]
 	# func = lambda x, beta: x[0]*x[0] - beta[0]
@@ -403,11 +409,11 @@ if __name__ == '__main__':
 
 	# EXP 4 - Normal propabillity calculation
 	## func = lambda x, beta: -0.5*erf((beta[0]-x[0])/(1.41421356237*beta[1])) - beta[2]
-	# func = lambda x, beta: 0.5+erf((beta[0]-x[0])/(2.82842712475*beta[1])) - beta[2]
+	func = lambda x, beta: 0.5+erf((beta[0]-x[0])/(2.82842712475*beta[1])) - beta[2]
 	## func_der = lambda x, beta: exp(-(x[0] - beta[0])*(x[0] - beta[0])/(2.0*beta[1]*beta[1]))/(2.50662827463*beta[1])
-	# func_der = lambda x, beta: 0.3989422804 * exp(-(x[0] - beta[0])*(x[0] - beta[0])/(2.0*beta[1]*beta[1]))/(beta[1])
-	# parameter_generator = lambda : [gauss(0,1), fabs(gauss(0,1)), random()*0.9999+(1-0.9999)/2.0]
-	# nr_of_parameters = 3
+	func_der = lambda x, beta: 0.3989422804 * exp(-(x[0] - beta[0])*(x[0] - beta[0])/(2.0*beta[1]*beta[1]))/(beta[1])
+	parameter_generator = lambda : [gauss(0,1), fabs(gauss(0,1)), random()*0.9999+(1-0.9999)/2.0]
+	nr_of_parameters = 3
 
 	"""
 	# EXP 5 - ANN for ITD
@@ -479,7 +485,7 @@ if __name__ == '__main__':
 	[conv_factors, total_time, ops_running_times, parameter_samples, roots] = opt_data
 
 	print("Calc Taylor Approx")
-	tay = TaylorApprox(func, func_der, roots, parameter_samples)
+	tay = TaylorApprox(func, func_der, roots, parameter_samples, x_more_than_zero=X_NEEDS_TO_BE_POS)
 	print("Calc constant solution")
 	con = get_constant_solution(roots)
 

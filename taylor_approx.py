@@ -69,6 +69,8 @@ class TaylorApprox():
 				# Do a small mutation to create a new function (aka solution)
 				new_exp_pnt = current_exp_pnt + gauss(0, root_span/50.0)
 				# cgp = CGP(dims, op_table, new_sol, nr_of_parameters=nr_of_pars)
+				if new_exp_pnt < 0 and x_more_than_zero:
+					new_exp_pnt = -new_exp_pnt
 				new_err = error_l2(new_exp_pnt)
 
 				temperature_itr += 1
@@ -85,7 +87,7 @@ class TaylorApprox():
 				best_of_all_pnt = best_exp_pnt
 		return best_of_all_pnt
 
-	def __init__(self, func, func_der, all_roots, all_parameters):
+	def __init__(self, func, func_der, all_roots, all_parameters, x_more_than_zero=False):
 		self.func = deepcopy(func)
 		self.func_der = deepcopy(func_der)
 		nr_of_parameters = len(all_parameters[0])
@@ -93,7 +95,7 @@ class TaylorApprox():
 			assert len(all_parameters[i]) == nr_of_parameters
 		self.nr_of_parameters = nr_of_parameters
 		# self.mean_root = sum(float(x)/len(all_roots) for x in all_roots)
-		self.expansion_point = self.optimize_expansion_point(func, func_der, all_roots, all_parameters)
+		self.expansion_point = self.optimize_expansion_point(func, func_der, all_roots, all_parameters, x_more_than_zero=x_more_than_zero)
 
 
 if __name__ == '__main__':
